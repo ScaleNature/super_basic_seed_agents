@@ -23,12 +23,12 @@ async function runTest() {
   console.log('Testing Plant Processing Pipeline');
   console.log('='.repeat(80));
   console.log();
-  console.log('Test case: Quercus alba (White Oak)');
+  console.log('Test case: Carex grayi (Gray Sedge)');
   console.log('Expected: Valid current name, native to SE Michigan');
   console.log();
   
   try {
-    const { stdout, stderr } = await execAsync('node src/output/process-plant.js Quercus alba');
+    const { stdout, stderr } = await execAsync('node src/output/process-plant.js carex grayi');
     
     console.log(stdout);
     
