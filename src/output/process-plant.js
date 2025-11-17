@@ -149,7 +149,7 @@ async function createPlantDataSheet(folderId) {
 async function writeDataToSheet(spreadsheetId, data) {
   const sheets = await getUncachableGoogleSheetsClient();
   
-  const headers = ['Genus', 'Species', 'Family', 'SE MI Native', 'Validation Notes', 'Native Check Notes'];
+  const headers = ['Genus', 'Species', 'Family', 'SE MI Native', 'Botanical Name Notes', 'Native Check Notes'];
   
   const dataRow = [
     data.genus,
@@ -182,7 +182,7 @@ async function processPlant(genus, species) {
   console.log('='.repeat(80));
   console.log();
   
-  // Step 1: Validate botanical name
+  // Step 1: Validate botanical name : Columns: Genus, Species, Family, Validation Notes.
   console.log(`Step 1: Validating botanical name "${genus} ${species}"...`);
   
   let validationResult;
@@ -210,7 +210,7 @@ async function processPlant(genus, species) {
   console.log(`  Family: ${validationResult.family}`);
   console.log();
   
-  // Step 2: Check native status
+  // Step 2: Check native status : Columns: SE MI Native, Native Check Notes.
   console.log(`Step 2: Checking if native to SE Michigan...`);
   
   let nativeResult;

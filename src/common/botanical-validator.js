@@ -83,6 +83,11 @@ Respond with ONLY the JSON object, no markdown, no explanations.`;
     // Parse the JSON response
     const result = JSON.parse(responseText.trim());
     
+    // Ensure genus starts with capital letter
+    if (result.genus && typeof result.genus === 'string') {
+      result.genus = result.genus.charAt(0).toUpperCase() + result.genus.slice(1).toLowerCase();
+    }
+    
     return result;
     
   } catch (error) {
