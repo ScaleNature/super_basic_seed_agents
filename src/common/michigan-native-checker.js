@@ -34,31 +34,25 @@ Botanical name to check: "${botanicalName}"
 Please analyze this plant and respond with a JSON object (and ONLY a JSON object, no other text) with the following structure:
 
 {
-  "botanicalName": "${botanicalName}",
   "isNative": true/false,
-  "confidence": "high" | "medium" | "low",
-  "status": "native" | "introduced" | "invasive" | "unknown",
-  "commonNames": ["array", "of", "common", "names"],
-  "habitat": "brief description of typical habitat in SE Michigan if native/naturalized",
-  "notes": "any relevant notes about the plant's status in SE Michigan"
+  "status": "native" | "introduced",
+  "notes": "any relevant notes about the plant's status in SE Michigan (optional)"
 }
 
-Guidelines for determining native status:
-- "native": Plant is indigenous to Southeast Michigan
-- "introduced": Plant was brought to the region but naturalized (not originally native)
-- "invasive": Non-native plant that spreads aggressively and causes ecological harm
-- "unknown": Unable to determine status with confidence
+Guidelines:
+- Set isNative=true and status="native" if the plant is indigenous to Southeast Michigan
+- Set isNative=false and status="introduced" if the plant was brought to the region (non-native)
+- Keep notes brief and relevant
 
 Southeast Michigan context:
 - Region includes Wayne, Oakland, Macomb, Washtenaw, Livingston, and surrounding counties
 - Hardiness zones 5b-6a
-- Mixed deciduous forests, wetlands, prairies, and Great Lakes coastal ecosystems
 
 Respond with ONLY the JSON object, no markdown, no explanations.`;
 
     const message = await client.messages.create({
       model: 'claude-sonnet-4-5',
-      max_tokens: 1024,
+      max_tokens: 512,
       messages: [
         {
           role: 'user',

@@ -42,18 +42,8 @@ async function runTests() {
       const result = await checkMichiganNative(testCase.genus, testCase.species);
 
       // Display the result
-      console.log(`  Botanical Name: ${result.botanicalName}`);
       console.log(`  Native to SE Michigan: ${result.isNative}`);
       console.log(`  Status: ${result.status}`);
-      console.log(`  Confidence: ${result.confidence}`);
-      
-      if (result.commonNames && result.commonNames.length > 0) {
-        console.log(`  Common Names: ${result.commonNames.join(", ")}`);
-      }
-      
-      if (result.habitat) {
-        console.log(`  Habitat: ${result.habitat}`);
-      }
       
       if (result.notes) {
         console.log(`  Notes: ${result.notes}`);
