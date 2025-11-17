@@ -75,17 +75,17 @@ const testCases = [
     shouldPass: false
   },
   
-  // Misspelled botanical names - SHOULD FAIL
+  // Misspelled botanical names - SHOULD DETECT as likely misspelled
   {
     name: 'Misspelled genus',
     input: 'Qurcus robur',
-    expectedStatus: 'invalid',
+    expectedStatus: 'likely_misspelled',
     shouldPass: false
   },
   {
     name: 'Misspelled species',
     input: 'Quercus robor',
-    expectedStatus: 'invalid',
+    expectedStatus: 'likely_misspelled',
     shouldPass: false
   },
   
@@ -132,6 +132,10 @@ async function runTests() {
       } else if (result.valid && result.status === 'updated') {
         console.log(`  → Updated name: ${result.currentName}`);
         console.log(`  → Family: ${result.family}, Genus: ${result.genus}, Species: ${result.species}`);
+      } else if (!result.valid && result.status === 'likely_misspelled') {
+        console.log(`  → Suggested name: ${result.suggestedName}`);
+        console.log(`  → Family: ${result.family}, Genus: ${result.genus}, Species: ${result.species}`);
+        console.log(`  → Error: ${result.error}`);
       } else if (!result.valid && result.status === 'invalid') {
         console.log(`  → Error: ${result.error}`);
       }

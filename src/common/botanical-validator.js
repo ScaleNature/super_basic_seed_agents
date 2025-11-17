@@ -28,19 +28,26 @@ Please analyze this name and respond with a JSON object (and ONLY a JSON object,
 
 {
   "valid": true/false,
-  "status": "current" | "updated" | "invalid",
+  "status": "current" | "updated" | "likely_misspelled" | "invalid",
   "error": "error message if invalid, otherwise null",
   "currentName": "accepted botanical name if status is 'updated', otherwise same as input",
+  "suggestedName": "suggested correct spelling if status is 'likely_misspelled', otherwise null",
   "family": "family name if valid",
   "genus": "genus name if valid",
   "species": "species name if valid"
 }
 
 Rules:
-- If the name is not a recognized species, set valid=false, status="invalid", and provide an error message
-- If the name has been updated/changed (is a synonym), set valid=true, status="updated", and provide the current accepted name
 - If the name is current and accepted, set valid=true, status="current"
-- Always provide family, genus, and species for valid names
+- If the name has been updated/changed (is an official synonym in botanical nomenclature), set valid=true, status="updated", and provide the current accepted name in "currentName"
+- If the name appears to be a misspelling of a known botanical name (e.g., "Quercus robor" instead of "Quercus robur"), set valid=false, status="likely_misspelled", provide the suggested correct spelling in "suggestedName", and include an error message explaining the misspelling
+- If the name is completely unrecognized or fabricated, set valid=false, status="invalid", and provide an error message
+- Always provide family, genus, and species for valid names (status "current" or "updated")
+- For likely misspellings, provide the family, genus, and species of the SUGGESTED name
+
+Important: Distinguish carefully between:
+  - Official botanical synonyms (old scientific names that were formally renamed) → status="updated"
+  - Likely misspellings (typos or minor spelling errors) → status="likely_misspelled"
 
 Respond with ONLY the JSON object, no markdown, no explanations.`;
 
