@@ -1,0 +1,100 @@
+import Anthropic from '@anthropic-ai/sdk';
+
+const client = new Anthropic({
+  apiKey: process.env.ANTHROPIC_API_KEY,
+});
+
+/**
+ * Checks if a plant species is native to Southeast Michigan
+ * @param {string} genus - The genus name (e.g., "Quercus")
+ * @param {string} species - The species name (e.g., "alba")
+ * @returns {Promise<Object>} Native status result with additional information
+ */
+export async function checkMichiganNative(genus, species) {
+  // Validate inputs
+  if (!process.env.ANTHROPIC_API_KEY) {
+    throw new Error('ANTHROPIC_API_KEY environment variable is not set');
+  }
+  
+  if (!genus || typeof genus !== 'string' || genus.trim() === '') {
+    throw new Error('Genus must be a non-empty string');
+  }
+  
+  if (!species || typeof species !== 'string' || species.trim() === '') {
+    throw new Error('Species must be a non-empty string');
+  }
+  
+  const botanicalName = `${genus} ${species}`;
+  
+  try {
+    const prompt = `You are a botanist specializing in the flora of the Great Lakes region, specifically Southeast Michigan. I will provide you with a plant's genus and species, and you need to determine if it is native to Southeast Michigan.
+
+Botanical name to check: "${botanicalName}"
+
+Please analyze this plant and respond with a JSON object (and ONLY a JSON object, no other text) with the following structure:
+
+{
+  "botanicalName": "${botanicalName}",
+  "isNative": true/false,
+  "confidence": "high" | "medium" | "low",
+  "status": "native" | "introduced" | "invasive" | "unknown",
+  "commonNames": ["array", "of", "common", "names"],
+  "habitat": "brief description of typical habitat in SE Michigan if native/naturalized",
+  "notes": "any relevant notes about the plant's status in SE Michigan"
+}
+
+Guidelines for determining native status:
+- "native": Plant is indigenous to Southeast Michigan
+- "introduced": Plant was brought to the region but naturalized (not originally native)
+- "invasive": Non-native plant that spreads aggressively and causes ecological harm
+- "unknown": Unable to determine status with confidence
+
+Southeast Michigan context:
+- Region includes Wayne, Oakland, Macomb, Washtenaw, Livingston, and surrounding counties
+- Hardiness zones 5b-6a
+- Mixed deciduous forests, wetlands, prairies, and Great Lakes coastal ecosystems
+
+Respond with ONLY the JSON object, no markdown, no explanations.`;
+
+    const message = await client.messages.create({
+      model: 'claude-sonnet-4-5',
+      max_tokens: 1024,
+      messages: [
+        {
+          role: 'user',
+          content: prompt
+        }
+      ],
+    });
+
+    // Aggregate all text content blocks (handles multi-block responses)
+    let responseText = message.content
+      .filter(block => block.type === 'text')
+      .map(block => block.text)
+      .join('')
+      .trim();
+    
+    if (!responseText) {
+      throw new Error('Claude API returned empty response');
+    }
+    
+    // Strip markdown code blocks if present
+    if (responseText.startsWith('```json')) {
+      responseText = responseText.replace(/^```json\s*/, '').replace(/\s*```$/, '');
+    } else if (responseText.startsWith('```')) {
+      responseText = responseText.replace(/^```\s*/, '').replace(/\s*```$/, '');
+    }
+    
+    // Parse the JSON response
+    const result = JSON.parse(responseText.trim());
+    
+    return result;
+    
+  } catch (error) {
+    // Handle API errors
+    if (error instanceof SyntaxError) {
+      throw new Error(`Failed to parse Claude API response as JSON: ${error.message}`);
+    }
+    throw new Error(`Claude API call failed: ${error.message}`);
+  }
+}
