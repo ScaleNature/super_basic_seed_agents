@@ -94,6 +94,7 @@ async function loadSynthesisModules() {
 
 /**
  * Build column definitions from loaded modules
+ * Handles {id, header} column format
  * @param {Array<Object>} modules - Array of loaded synthesis modules
  * @returns {Object} Column definitions object
  */
@@ -106,10 +107,12 @@ function buildColumnDefinitions(modules) {
   };
   
   for (const module of modules) {
-    for (const columnName of module.metadata.columns) {
-      headers.push(columnName);
-      // Create constant name from column name (e.g., "SE MI Native" -> "SE_MI_NATIVE")
-      const constName = columnName.toUpperCase().replace(/\s+/g, '_');
+    for (const column of module.metadata.columns) {
+      // Handle both string format (legacy) and {id, header} format
+      const header = typeof column === 'string' ? column : column.header;
+      headers.push(header);
+      // Create constant name from header (e.g., "SE MI Native" -> "SE_MI_NATIVE")
+      const constName = header.toUpperCase().replace(/\s+/g, '_');
       columnMap[constName] = columnIndex;
       columnIndex++;
     }
@@ -119,6 +122,68 @@ function buildColumnDefinitions(modules) {
     HEADERS: headers,
     ...columnMap
   };
+}
+
+/**
+ * Validate that module's columnValues match its declared columns
+ * @param {Object} module - The module with metadata
+ * @param {Object} columnValues - The columnValues object returned by module.run()
+ * @throws {Error} If validation fails
+ */
+function validateColumnValues(module, columnValues) {
+  if (!columnValues || typeof columnValues !== 'object') {
+    throw new Error(`Module ${module.metadata.id}: columnValues must be an object`);
+  }
+  
+  // Get expected column IDs
+  const expectedIds = module.metadata.columns.map(col => 
+    typeof col === 'string' ? col : col.id
+  );
+  
+  // Check all expected IDs are present
+  for (const id of expectedIds) {
+    if (!(id in columnValues)) {
+      throw new Error(
+        `Module ${module.metadata.id}: missing column value for "${id}". ` +
+        `Expected: [${expectedIds.join(', ')}], Got: [${Object.keys(columnValues).join(', ')}]`
+      );
+    }
+  }
+  
+  // Check for extra keys
+  const actualIds = Object.keys(columnValues);
+  for (const id of actualIds) {
+    if (!expectedIds.includes(id)) {
+      throw new Error(
+        `Module ${module.metadata.id}: unexpected column value "${id}". ` +
+        `Expected: [${expectedIds.join(', ')}]`
+      );
+    }
+  }
+}
+
+/**
+ * Flatten columnValues Record into ordered array based on module's column metadata
+ * Automatically JSON-stringifies object/array values
+ * @param {Object} module - The module with metadata
+ * @param {Object} columnValues - The columnValues object returned by module.run()
+ * @returns {Array} Ordered array of values matching module.metadata.columns order
+ */
+function flattenColumnValues(module, columnValues) {
+  validateColumnValues(module, columnValues);
+  
+  return module.metadata.columns.map(col => {
+    const id = typeof col === 'string' ? col : col.id;
+    const value = columnValues[id];
+    
+    // JSON-stringify objects and arrays for Google Sheets
+    if (value !== null && typeof value === 'object') {
+      return JSON.stringify(value);
+    }
+    
+    // Convert everything else to string (handles numbers, booleans, null, undefined)
+    return value == null ? '' : String(value);
+  });
 }
 
 // Dynamically build column definitions from registry
@@ -263,12 +328,17 @@ export async function getPlantRecord(genus, species) {
  * @param {string} genus - The genus name
  * @param {string} species - The species name
  * @param {Object} moduleResults - Results from all executed modules
- * @returns {Object} Plant record with genus, species, moduleResults, and legacy fields for compatibility
+ * @returns {Object} Plant record with genus, species, moduleResults, and derived fields for debugging
  */
 function buildPlantRecord(genus, species, moduleResults) {
   const botanicalResult = moduleResults['botanical-name'] || {};
   const nativeResult = moduleResults['native-checker'] || {};
   const urlResult = moduleResults['external-reference-urls'] || {};
+  
+  // Extract values from columnValues (the new structure)
+  const botanicalValues = botanicalResult.columnValues || {};
+  const nativeValues = nativeResult.columnValues || {};
+  const urlValues = urlResult.columnValues || {};
   
   return {
     // Base fields (always present)
@@ -278,12 +348,12 @@ function buildPlantRecord(genus, species, moduleResults) {
     // Store all module results for dynamic row construction
     moduleResults,
     
-    // Legacy fields for backward compatibility and debugging
-    family: botanicalResult.family || '',
-    isNative: nativeResult.isNative || false,
-    validationNotes: botanicalResult.notes || '',
-    nativeCheckNotes: nativeResult.nativeCheckNotes || '',
-    externalUrls: urlResult.externalUrls || {},
+    // Derived fields from columnValues for debugging/display
+    family: botanicalValues.family || '',
+    isNative: nativeValues.seMiNative === 'Yes',
+    validationNotes: botanicalValues.botanicalNameNotes || '',
+    nativeCheckNotes: nativeValues.nativeCheckNotes || '',
+    externalUrls: urlValues.externalReferenceUrls || {},
     validationStatus: botanicalResult.status || '',
     nativeStatus: nativeResult.status || ''
   };
@@ -363,7 +433,7 @@ export async function createPlantSheet(folderId, prefix = config.output.filePref
 
 /**
  * Append plant data rows to an existing Google Sheet
- * Dynamically constructs rows based on module metadata and results
+ * Fully dynamic: works with any modules without hardcoded logic
  * @param {string} spreadsheetId - The ID of the spreadsheet
  * @param {Array<Object>} plantRecords - Array of plant record objects from getPlantRecord()
  */
@@ -375,7 +445,7 @@ export async function appendPlantRows(spreadsheetId, plantRecords) {
   const sheets = await getUncachableGoogleSheetsClient();
   const modules = await loadSynthesisModules();
   
-  // Convert plant records to rows dynamically
+  // Convert plant records to rows dynamically using flattening helper
   const rows = plantRecords.map(record => {
     const row = [];
     
@@ -383,31 +453,18 @@ export async function appendPlantRows(spreadsheetId, plantRecords) {
     row.push(record.genus);
     row.push(record.species);
     
-    // Dynamically add module columns in order
+    // Dynamically add module columns using flattenColumnValues helper
     for (const module of modules) {
-      const moduleResult = record.moduleResults[module.metadata.id] || {};
+      const moduleResult = record.moduleResults[module.metadata.id];
       
-      // Special handling for botanical-name module (family and notes)
-      if (module.metadata.id === 'botanical-name') {
-        row.push(moduleResult.family || '');
-        row.push(moduleResult.notes || '');
-      }
-      // Native checker module
-      else if (module.metadata.id === 'native-checker') {
-        row.push(moduleResult.isNative ? 'Yes' : 'No');
-        row.push(moduleResult.nativeCheckNotes || '');
-      }
-      // External reference URLs module
-      else if (module.metadata.id === 'external-reference-urls') {
-        row.push(JSON.stringify(moduleResult.externalUrls || {}));
-      }
-      // Generic fallback for future modules
-      else {
-        for (const columnName of module.metadata.columns) {
-          // Try to find matching field in module result
-          const fieldValue = Object.values(moduleResult)[module.metadata.columns.indexOf(columnName)] || '';
-          row.push(typeof fieldValue === 'object' ? JSON.stringify(fieldValue) : fieldValue);
-        }
+      if (moduleResult && moduleResult.columnValues) {
+        // Use helper to flatten columnValues into ordered array
+        const values = flattenColumnValues(module, moduleResult.columnValues);
+        row.push(...values);
+      } else {
+        // Module failed or didn't run - fill with empty strings
+        const emptyValues = module.metadata.columns.map(() => '');
+        row.push(...emptyValues);
       }
     }
     

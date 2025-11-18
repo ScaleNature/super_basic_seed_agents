@@ -8,13 +8,17 @@ const client = new Anthropic({
 export const metadata = {
   id: 'botanical-name',
   name: 'Botanical Name Validator',
-  columns: ['Family', 'Botanical Name Notes'],
+  columns: [
+    { id: 'family', header: 'Family' },
+    { id: 'botanicalNameNotes', header: 'Botanical Name Notes' }
+  ],
   dependencies: [], // No dependencies - runs first
   description: 'Validates botanical names and returns current nomenclature status, family classification'
 };
 
 /**
  * Module runner function for registry system
+ * Enforces strict validation: fails if input genus/species don't exactly match current accepted names
  * @param {string} genus - The genus name
  * @param {string} species - The species name
  * @param {Object} priorResults - Results from previously executed modules (empty for this module)
@@ -24,17 +28,46 @@ export async function run(genus, species, priorResults) {
   const botanicalName = `${genus} ${species}`;
   const result = await validateBotanicalName(botanicalName);
   
+  // Strict validation: only accept if status is "current" AND names match exactly
+  if (result.status !== 'current') {
+    // Name is updated, misspelled, or invalid
+    return {
+      status: result.status,
+      genus: result.genus || genus,
+      species: result.species || species,
+      columnValues: {
+        family: result.family || '',
+        botanicalNameNotes: result.error || `Name is not current (status: ${result.status})`
+      }
+    };
+  }
+  
+  // Even if status is "current", verify exact match (catches capitalization issues)
+  const inputGenus = genus.charAt(0).toUpperCase() + genus.slice(1).toLowerCase();
+  const inputSpecies = species.toLowerCase();
+  
+  if (result.genus !== inputGenus || result.species !== inputSpecies) {
+    // Claude returned different genus/species than input
+    return {
+      status: 'mismatch',
+      genus: result.genus,
+      species: result.species,
+      columnValues: {
+        family: result.family || '',
+        botanicalNameNotes: `Input "${genus} ${species}" does not exactly match current name "${result.genus} ${result.species}"`
+      }
+    };
+  }
+  
+  // Perfect match - name is current and exact
   return {
-    // Internal fields for pipeline logic
-    status: result.status,
+    status: 'current',
     genus: result.genus,
     species: result.species,
-    
-    // Column values array (maps 1:1 to metadata.columns: ['Family', 'Botanical Name Notes'])
-    columnValues: [
-      result.family,           // Family
-      result.error || ''       // Botanical Name Notes
-    ]
+    columnValues: {
+      family: result.family,
+      botanicalNameNotes: ''  // No errors
+    }
   };
 }
 

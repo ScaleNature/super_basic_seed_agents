@@ -8,7 +8,10 @@ const client = new Anthropic({
 export const metadata = {
   id: 'native-checker',
   name: 'Native Status Checker',
-  columns: ['SE MI Native', 'Native Check Notes'],
+  columns: [
+    { id: 'seMiNative', header: 'SE MI Native' },
+    { id: 'nativeCheckNotes', header: 'Native Check Notes' }
+  ],
   dependencies: ['botanical-name'], // Requires valid botanical name first
   description: 'Determines if a plant species is native to Southeast Michigan region'
 };
@@ -18,17 +21,17 @@ export const metadata = {
  * @param {string} genus - The genus name
  * @param {string} species - The species name
  * @param {Object} priorResults - Results from previously executed modules
- * @returns {Promise<Object>} Object with columnValues array matching metadata.columns
+ * @returns {Promise<Object>} Object with columnValues Record matching metadata.columns
  */
 export async function run(genus, species, priorResults) {
   const result = await checkMichiganNative(genus, species);
   
   return {
-    // Column values array (maps 1:1 to metadata.columns: ['SE MI Native', 'Native Check Notes'])
-    columnValues: [
-      result.isNative ? 'Yes' : 'No',   // SE MI Native
-      result.notes || ''                 // Native Check Notes
-    ]
+    // Column values object (keys match column IDs from metadata.columns)
+    columnValues: {
+      seMiNative: result.isNative ? 'Yes' : 'No',
+      nativeCheckNotes: result.notes || ''
+    }
   };
 }
 

@@ -13,7 +13,9 @@ const CACHE_PATH = path.join(__dirname, '../../cache/external-reference-urls.jso
 export const metadata = {
   id: 'external-reference-urls',
   name: 'External Reference URL Discovery',
-  columns: ['External Reference URLs'],
+  columns: [
+    { id: 'externalReferenceUrls', header: 'External Reference URLs' }
+  ],
   dependencies: ['botanical-name'], // Requires valid botanical name for searching
   description: 'Discovers URLs for plant species across botanical reference websites with caching'
 };
@@ -23,13 +25,16 @@ export const metadata = {
  * @param {string} genus - The genus name
  * @param {string} species - The species name
  * @param {Object} priorResults - Results from previously executed modules
- * @returns {Promise<Object>} Object with externalUrls (JSON stringified)
+ * @returns {Promise<Object>} Object with columnValues Record matching metadata.columns
  */
 export async function run(genus, species, priorResults) {
   const urls = await discoverAllUrls(genus, species);
   
   return {
-    externalUrls: urls
+    // Column values object (keys match column IDs from metadata.columns)
+    columnValues: {
+      externalReferenceUrls: urls
+    }
   };
 }
 
