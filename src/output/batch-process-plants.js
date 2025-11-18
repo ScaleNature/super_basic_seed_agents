@@ -2,63 +2,21 @@ import { getPlantRecord, createPlantSheet, appendPlantRows, findFolderByName, ge
 
 /**
  * Process multiple plants and save to a single Google Sheet
+ * Uses incremental save strategy: creates sheet first, then appends each plant immediately
+ * This ensures partial progress is preserved if processing fails
  * @param {Array<{genus: string, species: string}>} plants - Array of plant objects
  */
 async function batchProcessPlants(plants) {
   console.log('='.repeat(80));
-  console.log('Batch Plant Processing Pipeline');
+  console.log('Batch Plant Processing Pipeline (Incremental Save)');
   console.log('='.repeat(80));
   console.log(`Processing ${plants.length} plants`);
   console.log();
   
-  // Step 1: Gather data for all plants
-  console.log(`Step 1: Gathering data for all plants...`);
-  console.log();
+  // Step 1: Create Google Sheet FIRST (before processing any plants)
+  console.log(`Step 1: Creating Google Sheet...`);
   
-  const plantRecords = [];
-  const failures = [];
-  
-  for (let i = 0; i < plants.length; i++) {
-    const { genus, species } = plants[i];
-    console.log(`  [${i + 1}/${plants.length}] Processing ${genus} ${species}...`);
-    
-    try {
-      const record = await getPlantRecord(genus, species);
-      
-      if (record) {
-        plantRecords.push(record);
-        console.log(`    ✓ Success - Native: ${record.isNative}, Family: ${record.family}`);
-      } else {
-        failures.push({ genus, species, reason: 'Not a current botanical name' });
-        console.log(`    ✗ Skipped - Not a current botanical name`);
-      }
-    } catch (error) {
-      failures.push({ genus, species, reason: error.message });
-      console.log(`    ✗ Failed - ${error.message}`);
-    }
-  }
-  
-  console.log();
-  console.log(`Data gathering complete:`);
-  console.log(`  ✓ Successful: ${plantRecords.length}`);
-  console.log(`  ✗ Failed/Skipped: ${failures.length}`);
-  console.log();
-  
-  if (failures.length > 0) {
-    console.log(`Failed/Skipped plants:`);
-    failures.forEach(f => {
-      console.log(`  - ${f.genus} ${f.species}: ${f.reason}`);
-    });
-    console.log();
-  }
-  
-  if (plantRecords.length === 0) {
-    console.log(`No valid plant records to save. Exiting.`);
-    return;
-  }
-  
-  // Step 2: Save to Google Sheets
-  console.log(`Step 2: Saving ${plantRecords.length} plants to Google Sheets...`);
+  let spreadsheetId, spreadsheetUrl;
   
   try {
     // Find the folder using config
@@ -72,24 +30,69 @@ async function batchProcessPlants(plants) {
     
     console.log(`  ✓ Found folder (ID: ${folderId})`);
     
-    // Create the sheet
-    console.log(`  Creating new Google Sheet...`);
-    const { spreadsheetId, spreadsheetUrl } = await createPlantSheet(folderId);
+    // Create the sheet with headers
+    console.log(`  Creating new Google Sheet with headers...`);
+    const sheetInfo = await createPlantSheet(folderId);
+    spreadsheetId = sheetInfo.spreadsheetId;
+    spreadsheetUrl = sheetInfo.spreadsheetUrl;
     console.log(`  ✓ Created sheet (ID: ${spreadsheetId})`);
-    
-    // Write all data rows
-    console.log(`  Writing ${plantRecords.length} rows to sheet...`);
-    await appendPlantRows(spreadsheetId, plantRecords);
-    
-    console.log(`  ✓ Data written successfully`);
+    console.log(`  ✓ Sheet URL: ${spreadsheetUrl}`);
     console.log();
-    console.log(`✓ Batch processing complete!`);
-    console.log(`  View sheet: ${spreadsheetUrl}`);
-    console.log(`  Total plants saved: ${plantRecords.length}`);
     
   } catch (error) {
-    console.error(`✗ Google Sheets operation failed: ${error.message}`);
+    console.error(`✗ Failed to create Google Sheet: ${error.message}`);
     process.exit(1);
+  }
+  
+  // Step 2: Process plants one at a time and save immediately
+  console.log(`Step 2: Processing plants (saving incrementally)...`);
+  console.log();
+  
+  let successCount = 0;
+  const failures = [];
+  
+  for (let i = 0; i < plants.length; i++) {
+    const { genus, species } = plants[i];
+    console.log(`  [${i + 1}/${plants.length}] Processing ${genus} ${species}...`);
+    
+    try {
+      const record = await getPlantRecord(genus, species);
+      
+      if (record) {
+        // Immediately append this plant to the sheet
+        await appendPlantRows(spreadsheetId, [record]);
+        successCount++;
+        console.log(`    ✓ Success - Saved to sheet (Native: ${record.isNative}, Family: ${record.family})`);
+      } else {
+        failures.push({ genus, species, reason: 'Not a current botanical name' });
+        console.log(`    ✗ Skipped - Not a current botanical name`);
+      }
+    } catch (error) {
+      failures.push({ genus, species, reason: error.message });
+      console.log(`    ✗ Failed - ${error.message}`);
+    }
+  }
+  
+  console.log();
+  console.log(`Processing complete:`);
+  console.log(`  ✓ Successful: ${successCount}`);
+  console.log(`  ✗ Failed/Skipped: ${failures.length}`);
+  console.log();
+  
+  if (failures.length > 0) {
+    console.log(`Failed/Skipped plants:`);
+    failures.forEach(f => {
+      console.log(`  - ${f.genus} ${f.species}: ${f.reason}`);
+    });
+    console.log();
+  }
+  
+  console.log(`✓ Batch processing complete!`);
+  console.log(`  View sheet: ${spreadsheetUrl}`);
+  console.log(`  Total plants saved: ${successCount}`);
+  
+  if (successCount === 0) {
+    console.log(`  Note: Sheet created but empty (no valid plants processed)`);
   }
 }
 
