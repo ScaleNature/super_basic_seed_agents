@@ -14,15 +14,15 @@ console.log('='.repeat(80));
 console.log();
 
 const testPlants = [
-  { genus: 'Trillium', species: 'grandiflorum', common: 'Large-flowered trillium' },
-  { genus: 'Sanguinaria', species: 'canadensis', common: 'Bloodroot' },
-  { genus: 'Claytonia', species: 'virginica', common: 'Spring beauty' },
-  { genus: 'Erythronium', species: 'americanum', common: 'Trout lily' }
+  { genus: 'Trillium', species: 'grandiflorum'},
+  { genus: 'Sanguinaria', species: 'canadensis'},
+  { genus: 'Claytonia', species: 'virginica'},
+  { genus: 'Erythronium', species: 'americanum'}
 ];
 
 console.log('Test plants:');
 testPlants.forEach((plant, i) => {
-  console.log(`  ${i + 1}. ${plant.genus} ${plant.species} (${plant.common})`);
+  console.log(`  ${i + 1}. ${plant.genus} ${plant.species}`);
 });
 console.log();
 console.log('='.repeat(80));
