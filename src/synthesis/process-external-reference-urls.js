@@ -100,6 +100,50 @@ function sleep(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
 
+/**
+ * Normalize botanical name to ensure consistent capitalization
+ * Genus: First alphabetic letter uppercase, rest lowercase
+ * Species: All lowercase
+ * Handles hybrid symbols (×), whitespace, and other botanical variations
+ * @param {string} genus - Genus name (required)
+ * @param {string} species - Species name (required)
+ * @returns {string} Normalized species key in "Genus species" format
+ * @throws {Error} If genus or species is missing or not a string
+ */
+function normalizeSpeciesKey(genus, species) {
+  if (!genus || typeof genus !== 'string') {
+    throw new Error('Genus must be a non-empty string');
+  }
+  if (!species || typeof species !== 'string') {
+    throw new Error('Species must be a non-empty string');
+  }
+  
+  // Trim whitespace
+  const trimmedGenus = genus.trim();
+  const trimmedSpecies = species.trim();
+  
+  if (trimmedGenus.length === 0 || trimmedSpecies.length === 0) {
+    throw new Error('Genus and species cannot be empty after trimming');
+  }
+  
+  // Normalize genus: Find first alphabetic character and uppercase it
+  // This handles hybrid genera like "×Chitalpa" correctly
+  let normalizedGenus = trimmedGenus.toLowerCase();
+  for (let i = 0; i < normalizedGenus.length; i++) {
+    if (/[a-z]/i.test(normalizedGenus[i])) {
+      normalizedGenus = normalizedGenus.substring(0, i) + 
+                       normalizedGenus[i].toUpperCase() + 
+                       normalizedGenus.substring(i + 1);
+      break;
+    }
+  }
+  
+  // Normalize species: all lowercase
+  const normalizedSpecies = trimmedSpecies.toLowerCase();
+  
+  return `${normalizedGenus} ${normalizedSpecies}`;
+}
+
 async function searchWithRetry(searchQuery, site) {
   const cfg = loadConfig();
   const { startDelayMs, maxDelayMs } = cfg.retrySettings;
@@ -161,7 +205,8 @@ export async function discoverAllUrls(genus, species) {
   const cfg = loadConfig();
   const currentCache = loadCache();
   
-  const speciesKey = `${genus} ${species}`;
+  // Normalize species key to ensure consistent capitalization (Genus species format)
+  const speciesKey = normalizeSpeciesKey(genus, species);
   
   // Load existing cached URLs for this species (if any)
   const cachedUrls = currentCache[speciesKey] || {};
@@ -234,7 +279,8 @@ export async function discoverAllUrls(genus, species) {
 
 export function getCachedUrls(genus, species) {
   const currentCache = loadCache();
-  const speciesKey = `${genus} ${species}`;
+  // Normalize species key to ensure consistent capitalization (Genus species format)
+  const speciesKey = normalizeSpeciesKey(genus, species);
   return currentCache[speciesKey] || null;
 }
 
@@ -242,4 +288,95 @@ export function clearCache() {
   cache = {};
   saveCache();
   console.log('Cache cleared');
+}
+
+/**
+ * Migrate cache to consolidate duplicate entries with different capitalizations
+ * Merges all variants (e.g., "carex grayi", "Carex grayi", "CAREX GRAYI") into
+ * the normalized form ("Carex grayi")
+ * @returns {Object} Migration summary with before/after counts
+ * @throws {Error} If migration fails (original cache is preserved)
+ */
+export function migrateCacheKeys() {
+  // Work on a deep clone to avoid mutating the original until save succeeds
+  const currentCache = loadCache();
+  const originalCache = JSON.parse(JSON.stringify(currentCache));
+  const migratedCache = {};
+  const mergeLog = [];
+  
+  try {
+    // Group entries by normalized key
+    const groups = {};
+    const unparsableEntries = {}; // Preserve entries that can't be normalized
+    
+    for (const [originalKey, urls] of Object.entries(currentCache)) {
+      // Extract genus and species from key
+      const parts = originalKey.split(' ');
+      if (parts.length < 2) {
+        console.warn(`Preserving unparsable cache key: "${originalKey}" (cannot split into genus + species)`);
+        unparsableEntries[originalKey] = urls;
+        continue;
+      }
+      
+      const genus = parts[0];
+      const species = parts.slice(1).join(' '); // Handle multi-word species
+      
+      try {
+        const normalizedKey = normalizeSpeciesKey(genus, species);
+        
+        if (!groups[normalizedKey]) {
+          groups[normalizedKey] = [];
+        }
+        
+        groups[normalizedKey].push({ originalKey, urls });
+      } catch (error) {
+        console.warn(`Preserving unparsable key "${originalKey}": ${error.message}`);
+        unparsableEntries[originalKey] = urls;
+      }
+    }
+    
+    // Merge duplicate entries
+    for (const [normalizedKey, entries] of Object.entries(groups)) {
+      if (entries.length > 1) {
+        // Multiple entries found - merge them
+        const mergedUrls = {};
+        const originalKeys = entries.map(e => e.originalKey);
+        
+        // Merge all URLs, prioritizing entries with more sites
+        for (const { urls } of entries) {
+          Object.assign(mergedUrls, urls);
+        }
+        
+        migratedCache[normalizedKey] = mergedUrls;
+        mergeLog.push({
+          normalizedKey,
+          originalKeys,
+          urlCount: Object.keys(mergedUrls).length
+        });
+      } else {
+        // Single entry - just use it
+        migratedCache[normalizedKey] = entries[0].urls;
+      }
+    }
+    
+    // Add back unparsable entries (preserve for manual cleanup)
+    Object.assign(migratedCache, unparsableEntries);
+    
+    // Only commit to cache after successful processing
+    cache = migratedCache;
+    saveCache();
+    
+    return {
+      before: Object.keys(currentCache).length,
+      after: Object.keys(migratedCache).length,
+      merged: mergeLog,
+      unparsable: Object.keys(unparsableEntries).length
+    };
+    
+  } catch (error) {
+    // Rollback on any error - restore original cache
+    cache = originalCache;
+    console.error('Migration failed, cache restored to original state');
+    throw new Error(`Cache migration failed: ${error.message}`);
+  }
 }
