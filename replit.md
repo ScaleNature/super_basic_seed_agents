@@ -52,10 +52,16 @@ The Seed and Species Aggregator is a Node.js backend project for processing and 
   - Skips non-current botanical names
 
 **Test Scripts:**
-- `test-botanical-validator.js`: Tests botanical validation
-- `test-michigan-native.js`: Tests native status checking
-- `test-url-discovery.js`: Tests external reference URL discovery and caching
-- `test-batch-process.js`: Tests batch processing with 4 spring ephemerals
+- Synthesis module tests (in `test/synthesis/`):
+  - `test-botanical-validator.js`: Tests botanical validation
+  - `test-michigan-native.js`: Tests native status checking
+  - `test-url-discovery.js`: Tests external reference URL discovery and caching
+- Integration tests (in `test/`):
+  - `test-batch-process.js`: Tests batch processing with 4 spring ephemerals
+  - `test-process-plant.js`: Tests single plant processing
+  - `test_claudeAPI.js`: Tests Claude API connectivity
+  - `test_serpAPI.js`: Tests SerpApi connectivity (skips if no API key)
+  - `test_googledrive.js`: Tests Google Drive connection and folder access
 
 ### Data Processing Pipeline
 
@@ -77,23 +83,39 @@ The Seed and Species Aggregator is a Node.js backend project for processing and 
 
 ## Key Workflows & Usage
 
-### Botanical Name Validation Test
+### Running Tests
+
+**Synthesis Module Tests:**
 ```bash
-node test-botanical-validator.js
+node test/synthesis/test-botanical-validator.js
 ```
 Tests validation logic with sample plants (Quercus alba, Acer rubrum, etc.)
 
-### Michigan Native Status Test
 ```bash
-node test-michigan-native.js
+node test/synthesis/test-michigan-native.js
 ```
 Tests native status checking with sample SE Michigan plants
 
-### External Reference URL Discovery Test
 ```bash
-node test-url-discovery.js
+node test/synthesis/test-url-discovery.js
 ```
 Tests URL discovery with Trillium grandiflorum and Quercus alba. First run performs web searches and caches results. Subsequent runs use cache (instant, no API credits consumed).
+
+**Integration Tests:**
+```bash
+node test/test_claudeAPI.js
+```
+Tests basic Claude API connectivity
+
+```bash
+node test/test_serpAPI.js
+```
+Tests SerpApi connectivity (skips gracefully if no API key)
+
+```bash
+node test/test_googledrive.js
+```
+Tests Google Drive connection and folder access
 
 ### Single Plant Processing
 ```bash
@@ -126,7 +148,7 @@ node src/output/batch-process-plants.js Quercus alba Acer rubrum Carya ovata
 
 **Test batch processing:**
 ```bash
-node test-batch-process.js
+node test/test-batch-process.js
 ```
 Processes 4 SE Michigan spring ephemerals (Trillium grandiflorum, Sanguinaria canadensis, Claytonia virginica, Erythronium americanum)
 
@@ -176,10 +198,14 @@ Configuration is loaded by `plant-pipeline.js` and individual synthesis modules 
 | `src/output/plant-pipeline.js` | Shared pipeline functions for data gathering and Google Sheets operations |
 | `src/output/process-plant.js` | CLI tool for single plant processing |
 | `src/output/batch-process-plants.js` | CLI tool for batch plant processing |
-| `test-botanical-validator.js` | Test harness for botanical validation |
-| `test-michigan-native.js` | Test harness for native status checking |
-| `test-url-discovery.js` | Test harness for URL discovery and caching |
-| `test-batch-process.js` | Test harness for batch processing with 4 sample plants |
+| `test/synthesis/test-botanical-validator.js` | Test harness for botanical validation |
+| `test/synthesis/test-michigan-native.js` | Test harness for native status checking |
+| `test/synthesis/test-url-discovery.js` | Test harness for URL discovery and caching |
+| `test/test-batch-process.js` | Test harness for batch processing with 4 sample plants |
+| `test/test-process-plant.js` | Test harness for single plant processing |
+| `test/test_claudeAPI.js` | Test harness for Claude API connectivity |
+| `test/test_serpAPI.js` | Test harness for SerpApi connectivity |
+| `test/test_googledrive.js` | Test harness for Google Drive connection and folder access |
 | `config/config.json` | Main configuration for system-wide settings |
 | `config/external-reference-urls.json` | Configuration for URL discovery synthesis module |
 | `cache/external-reference-urls.json` | Cached URL discovery results |
