@@ -1,4 +1,4 @@
-import { validateBotanicalName } from "./src/synthesis/process-botanical-name.js";
+import { validateBotanicalName } from "../../src/synthesis/process-botanical-name.js";
 
 const testCases = [
   // Valid current botanical names - SHOULD PASS

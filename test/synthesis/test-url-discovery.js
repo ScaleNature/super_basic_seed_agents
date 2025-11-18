@@ -1,4 +1,4 @@
-import { discoverAllUrls, getCachedUrls, clearCache } from './src/synthesis/process-external-reference-urls.js';
+import { discoverAllUrls, getCachedUrls, clearCache } from '../../src/synthesis/process-external-reference-urls.js';
 
 async function testUrlDiscovery() {
   console.log('=== Testing External Reference URL Discovery ===\n');
