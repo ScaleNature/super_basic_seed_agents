@@ -10,22 +10,86 @@ The Seed and Species Aggregator is a Node.js backend project designed for proces
 
 ## System Architecture
 
-### Dynamic Module Registry
-The project utilizes a dynamic module registry architecture to enable easy integration of new synthesis modules without modifying core pipeline code. Modules are registered in `config/synthesis-registry.json`, export standardized `metadata` and a `run()` function, and are executed in dependency order. Column definitions for output are automatically generated from module metadata.
+### Plug-and-Play Module Registry (Version 2.0)
+The project uses a **fully dynamic, plug-and-play module registry architecture** that enables adding new synthesis modules with ZERO pipeline code changes. Simply create a module file and add one registry entry - the system handles everything else automatically.
+
+**Key Features:**
+- **Type-safe column contract**: Modules declare columns with stable IDs (`{id, header}` format)
+- **Runtime validation**: Automatic validation ensures module outputs match declared columns
+- **Generic row construction**: Pipeline uses metadata-driven helpers to flatten any module's output
+- **Dependency resolution**: Automatic topological sorting ensures modules run in correct order
+- **No hardcoded logic**: Pipeline code has zero module-specific branches
+
+### Module Interface Contract
+All synthesis modules must export:
+
+1. **`metadata` object**:
+```javascript
+{
+  id: 'module-identifier',        // Unique ID (kebab-case)
+  name: 'Display Name',
+  columns: [                       // Column descriptors with stable IDs
+    { id: 'columnId', header: 'Display Header' }
+  ],
+  dependencies: ['other-module'],  // Module IDs this depends on
+  description: 'What this module does'
+}
+```
+
+2. **`run(genus, species, priorResults)` function** that returns:
+```javascript
+{
+  columnValues: {                 // Keys MUST match column IDs from metadata
+    columnId: value
+  },
+  // Optional: internal fields for pipeline logic (status, genus, species, etc.)
+}
+```
+
+**Runtime Validation:** The pipeline validates that all declared column IDs have values and no extra keys exist, preventing silent data corruption.
 
 ### Current Synthesis Modules
--   **`process-botanical-name.js`**: Validates botanical names using the Claude API, acting as a critical validation gate.
--   **`process-native-checker.js`**: Determines if a plant is native to a specified region (e.g., Southeast Michigan) using the Claude API, dependent on botanical name validation.
--   **`process-external-reference-urls.js`**: Discovers and caches URLs from various botanical reference websites and Google Images, based on the validated botanical name.
+-   **`process-botanical-name.js`**: Validates botanical names using Claude API with **strict validation** (fails if name isn't exactly current accepted nomenclature). Acts as critical validation gate.
+-   **`process-native-checker.js`**: Determines if plant is native to Southeast Michigan using Claude API, dependent on botanical name validation.
+-   **`process-external-reference-urls.js`**: Discovers and caches URLs from botanical reference websites using SerpApi, based on validated botanical name.
+-   **`test-flower-color.js`**: Test module demonstrating plug-and-play architecture (mock data for verification).
 
 ### Processing Pipeline (`src/output/plant-pipeline.js`)
-This pipeline dynamically loads, validates, and executes enabled synthesis modules based on a dependency graph. It automatically builds output columns and provides core functions for:
--   `getPlantRecord(genus, species)`: Executes modules to gather a complete plant record.
--   `createPlantSheet(folderId, prefix)`: Creates timestamped Google Sheets with dynamic headers.
--   `appendPlantRows(spreadsheetId, plantRecords)`: Writes processed plant data to Google Sheets.
--   Google Drive folder discovery and caching.
+The pipeline dynamically loads, validates, and executes enabled modules using a dependency graph. It provides:
 
-Error handling includes stopping processing for critical failures and logging non-critical errors.
+**Core Functions:**
+-   `loadSynthesisModules()`: Loads modules from registry and sorts by dependencies
+-   `validateColumnValues(module, columnValues)`: Ensures module output matches metadata
+-   `flattenColumnValues(module, columnValues)`: Converts Record to ordered array for Sheets
+-   `buildColumnDefinitions(modules)`: Generates dynamic headers from module metadata
+-   `getPlantRecord(genus, species)`: Executes all modules to gather complete plant record
+-   `createPlantSheet(folderId, prefix)`: Creates timestamped Google Sheets with dynamic headers
+-   `appendPlantRows(spreadsheetId, plantRecords)`: Writes plant data using generic flattening
+
+**Error Handling:**
+- Stops processing if botanical-name validation fails (status !== 'current')
+- Logs non-critical module failures and continues with empty results
+- Provides detailed validation errors if columnValues contract is violated
+
+### Adding a New Module (2-Step Process)
+1. **Create module file** in `src/synthesis/` following the interface contract
+2. **Add registry entry** to `config/synthesis-registry.json`:
+```json
+{
+  "id": "your-module-id",
+  "path": "../synthesis/your-module.js",
+  "enabled": true,
+  "description": "What it does"
+}
+```
+
+**That's it!** No pipeline code changes needed. The module will automatically:
+- Load at startup
+- Execute in dependency order
+- Validate its output
+- Generate its columns in the Google Sheet
+
+See `docs/synthesis-module-interface.md` for complete interface specification and examples.
 
 ### CLI Tools
 -   **`src/output/process-plant.js`**: Processes a single plant and outputs to an individual Google Sheet.
