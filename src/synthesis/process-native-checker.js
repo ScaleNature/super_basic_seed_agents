@@ -4,6 +4,31 @@ const client = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
 });
 
+// Module metadata for registry system
+export const metadata = {
+  id: 'native-checker',
+  name: 'Native Status Checker',
+  columns: ['SE MI Native', 'Native Check Notes'],
+  dependencies: ['botanical-name'], // Requires valid botanical name first
+  description: 'Determines if a plant species is native to Southeast Michigan region'
+};
+
+/**
+ * Module runner function for registry system
+ * @param {string} genus - The genus name
+ * @param {string} species - The species name
+ * @param {Object} priorResults - Results from previously executed modules
+ * @returns {Promise<Object>} Native status with isNative boolean and notes
+ */
+export async function run(genus, species, priorResults) {
+  const result = await checkMichiganNative(genus, species);
+  
+  return {
+    isNative: result.isNative,
+    nativeCheckNotes: result.notes || ''
+  };
+}
+
 /**
  * Checks if a plant species is native to Southeast Michigan
  * @param {string} genus - The genus name (e.g., "Quercus")
