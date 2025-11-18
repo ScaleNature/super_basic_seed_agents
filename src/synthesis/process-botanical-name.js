@@ -8,7 +8,7 @@ const client = new Anthropic({
 export const metadata = {
   id: 'botanical-name',
   name: 'Botanical Name Validator',
-  columns: ['Genus', 'Species', 'Family', 'Botanical Name Notes'],
+  columns: ['Family', 'Botanical Name Notes'],
   dependencies: [], // No dependencies - runs first
   description: 'Validates botanical names and returns current nomenclature status, family classification'
 };
