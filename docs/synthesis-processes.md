@@ -20,6 +20,65 @@ The Seed and Species Aggregator uses **5 synthesis modules** that execute in dep
 
 ---
 
+## Google Spreadsheet Output Structure
+
+The synthesis pipeline creates Google Sheets with the following column structure. Each module contributes one or more columns:
+
+### Complete Column Layout (14 total columns)
+
+| Column # | Column Header | Source Module | Data Type |
+|----------|---------------|---------------|-----------|
+| 1 | **Family** | botanical-name | String |
+| 2 | **Botanical Name Notes** | botanical-name | String |
+| 3 | **SE MI Native** | native-checker | "Yes" or "No" |
+| 4 | **Native Check Notes** | native-checker | String |
+| 5 | **Michigan Flora** | external-reference-urls | URL String |
+| 6 | **Go Botany** | external-reference-urls | URL String |
+| 7 | **Illinois Wildflowers** | external-reference-urls | URL String |
+| 8 | **Lady Bird Johnson Wildflower Center** | external-reference-urls | URL String |
+| 9 | **Prairie Moon Nursery** | external-reference-urls | URL String |
+| 10 | **USDA PLANTS** | external-reference-urls | URL String |
+| 11 | **Tropicos** | external-reference-urls | URL String |
+| 12 | **Minnesota Wildflowers** | external-reference-urls | URL String |
+| 13 | **Google Images** | external-reference-urls | URL String |
+| 14 | **Common Names** | common-names | String (comma-separated) |
+| 15 | **Previously Known As** | previous-botanical | String (comma-separated) |
+
+### Example Complete Spreadsheet Row
+
+**Quercus alba (White Oak)**:
+
+| Column | Value |
+|--------|-------|
+| Family | `Fagaceae` |
+| Botanical Name Notes | *(empty)* |
+| SE MI Native | `Yes` |
+| Native Check Notes | `Common native tree throughout the region` |
+| Michigan Flora | *(empty - not found)* |
+| Go Botany | `https://gobotany.nativeplanttrust.org/species/quercus/alba/` |
+| Illinois Wildflowers | `https://www.illinoiswildflowers.info/trees/plants/wh_oak.htm` |
+| Lady Bird Johnson Wildflower Center | `https://www.wildflower.org/plants/result.php?id_plant=qual` |
+| Prairie Moon Nursery | `https://www.prairiemoon.com/quercus-alba-white-oak` |
+| USDA PLANTS | `https://plants.usda.gov/plant-profile/QUAL` |
+| Tropicos | `https://tropicos.org/...` |
+| Minnesota Wildflowers | `https://minnesotawildflowers.info/...` |
+| Google Images | `https://www.google.com/search?tbm=isch&q=Quercus%20alba` |
+| Common Names | `White Oak, Eastern White Oak, Stave Oak, Ridge White Oak` |
+| Previously Known As | `Quercus candida, Quercus nigrescens, Quercus ramosa, Quercus repanda, Quercus repanda` |
+
+### Dynamic Column Generation
+
+**Important**: The spreadsheet columns are **dynamically generated** from module metadata:
+
+1. **Module Registration**: Each module declares its columns in `metadata.columns`
+2. **Pipeline Aggregation**: Pipeline reads all enabled modules and builds column definitions
+3. **Sheet Creation**: Google Sheets are created with headers matching module metadata
+4. **Data Writing**: Each row is populated by flattening module `columnValues` in dependency order
+
+**Adding New Modules**: When you add a new synthesis module, its columns automatically appear in the spreadsheet—no manual spreadsheet configuration needed!
+
+---
+
 ## 1. Botanical Name Validator (`botanical-name`)
 
 **Module ID**: `botanical-name`  
@@ -33,6 +92,20 @@ The Seed and Species Aggregator uses **5 synthesis modules** that execute in dep
 ### Output Columns
 1. **Family** (`family`) - Taxonomic family name
 2. **Botanical Name Notes** (`botanicalNameNotes`) - Validation errors or notes
+
+### Google Spreadsheet Columns
+This module populates **2 columns** in the output spreadsheet:
+
+| Column Header | Example Value | Description |
+|---------------|---------------|-------------|
+| **Family** | `Fagaceae` | Taxonomic family classification |
+| **Botanical Name Notes** | *(empty for valid names)* | Error messages or validation notes |
+
+**Example Spreadsheet Row** (Quercus alba):
+```
+Family: Fagaceae
+Botanical Name Notes: [empty]
+```
 
 ### Processing Logic
 
@@ -114,6 +187,20 @@ Only plants with status `"current"` proceed to downstream modules. This ensures:
 1. **SE MI Native** (`seMiNative`) - "Yes" or "No"
 2. **Native Check Notes** (`nativeCheckNotes`) - Additional context
 
+### Google Spreadsheet Columns
+This module populates **2 columns** in the output spreadsheet:
+
+| Column Header | Example Value | Description |
+|---------------|---------------|-------------|
+| **SE MI Native** | `Yes` or `No` | Native status for Southeast Michigan |
+| **Native Check Notes** | `Common native tree throughout the region` | Additional context about native status |
+
+**Example Spreadsheet Row** (Quercus alba):
+```
+SE MI Native: Yes
+Native Check Notes: Common native tree throughout the region
+```
+
 ### Processing Logic
 
 #### Step 1: Regional Native Status Check
@@ -163,6 +250,32 @@ Converts Claude's response to column values:
 
 ### Output Columns
 1. **External Reference URLs** (`externalReferenceUrls`) - Object/Record with site names as keys
+
+### Google Spreadsheet Columns
+This module populates **9 columns** in the output spreadsheet (one per reference website):
+
+| Column Header | Example Value | Description |
+|---------------|---------------|-------------|
+| **Michigan Flora** | `https://michiganflora.net/...` | Michigan Flora website link |
+| **Go Botany** | `https://gobotany.nativeplanttrust.org/...` | Go Botany website link |
+| **Illinois Wildflowers** | `https://illinoiswildflowers.info/...` | Illinois Wildflowers website link |
+| **Lady Bird Johnson Wildflower Center** | `https://wildflower.org/...` | LBJWC website link |
+| **Prairie Moon Nursery** | `https://prairiemoon.com/...` | Prairie Moon Nursery link |
+| **USDA PLANTS** | `https://plants.usda.gov/...` | USDA PLANTS database link |
+| **Tropicos** | `https://tropicos.org/...` | Tropicos botanical database link |
+| **Minnesota Wildflowers** | `https://minnesotawildflowers.info/...` | Minnesota Wildflowers link |
+| **Google Images** | `https://google.com/search?tbm=isch&q=...` | Google Images search results |
+
+**Example Spreadsheet Row** (Quercus alba):
+```
+Go Botany: https://gobotany.nativeplanttrust.org/species/quercus/alba/
+Illinois Wildflowers: https://www.illinoiswildflowers.info/trees/plants/wh_oak.htm
+USDA PLANTS: https://plants.usda.gov/plant-profile/QUAL
+Google Images: https://www.google.com/search?tbm=isch&q=Quercus%20alba
+... (up to 9 columns)
+```
+
+**Note**: Each reference website gets its own dedicated column. Empty columns appear if a URL was not found for that site.
 
 ### Targeted Reference Websites (8 search-based + 1 direct)
 1. Michigan Flora
@@ -271,6 +384,23 @@ Merge cached URLs + newly discovered URLs
 ### Output Columns
 1. **Common Names** (`commonNames`) - Comma-separated vernacular names
 
+### Google Spreadsheet Columns
+This module populates **1 column** in the output spreadsheet:
+
+| Column Header | Example Value | Description |
+|---------------|---------------|-------------|
+| **Common Names** | `White Oak, Eastern White Oak, Stave Oak` | Comma-separated vernacular names |
+
+**Example Spreadsheet Row** (Quercus alba):
+```
+Common Names: White Oak, Eastern White Oak, Stave Oak, Ridge White Oak
+```
+
+**Example Spreadsheet Row** (Acer saccharum):
+```
+Common Names: Sugar Maple, Hard Maple, Rock Maple, Sugar Tree
+```
+
 ### Processing Logic
 
 #### Step 1: Regional Common Name Discovery
@@ -346,6 +476,28 @@ If no common names exist or are in use:
 
 ### Output Columns
 1. **Previously Known As** (`previouslyKnownAs`) - Comma-separated botanical synonyms
+
+### Google Spreadsheet Columns
+This module populates **1 column** in the output spreadsheet:
+
+| Column Header | Example Value | Description |
+|---------------|---------------|-------------|
+| **Previously Known As** | `Acer saccharophorum, Acer palmifolium` | Comma-separated botanical synonyms |
+
+**Example Spreadsheet Row** (Acer saccharum):
+```
+Previously Known As: Acer hispidum, Acer palmifolium, Acer saccharinum, Acer saccharophorum
+```
+
+**Example Spreadsheet Row** (Eutrochium fistulosum):
+```
+Previously Known As: Eupatoriadelphus fistulosus, Eupatorium fistulosum
+```
+
+**Example Spreadsheet Row** (species with no synonyms):
+```
+Previously Known As: [empty]
+```
 
 ### Processing Logic
 
