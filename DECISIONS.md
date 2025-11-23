@@ -1,5 +1,16 @@
 # Design Decisions
 
+## 2025-11-23
+- Get Michigan Flora Online data. It does NOT have a public API. There is a REST API for programmatic access.
+    Contact the U-M Herbarium Directly
+        Email: eeb-michiganfloraonline@umich.edu
+        Phone: 734.615.6200
+        Ask if they:
+        Have any API access (public or for research purposes)
+        Can provide data dumps or exports
+        Would be willing to collaborate on your project
+- Document process design, souce APIs, and which are used by which.
+
 ## 2025-11-18
 - Use a true plug and play approach for the up to 40 modules that produce data elements.
 - All modules finish for a given species before data is saved.

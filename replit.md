@@ -92,6 +92,17 @@ The pipeline dynamically loads, validates, and executes enabled modules using a 
 
 See `docs/synthesis-module-interface.md` for complete interface specification and examples.
 
+## Documentation
+
+### Technical Reference Documentation
+Comprehensive documentation is maintained in the `docs/` directory and kept synchronized with code changes:
+
+-   **`docs/api-data-sources.md`**: Complete reference for all external APIs and data sources (Google Drive/Sheets, Anthropic Claude, SerpApi, GBIF). Includes authentication methods, endpoints used, rate limits, caching strategies, and portability considerations.
+-   **`docs/synthesis-processes.md`**: Detailed processing guide for each synthesis module. Describes data sources, output columns, high-level processing logic, and error handling for all 5 modules.
+-   **`docs/synthesis-module-interface.md`**: Interface specification for creating new synthesis modules.
+
+**Documentation Philosophy**: These are living documents that are proactively updated whenever code changes are made to ensure they reflect the current system state.
+
 ### CLI Tools
 -   **`src/output/process-plant.js`**: Processes a single plant and outputs to an individual Google Sheet.
 -   **`src/output/batch-process-plants.js`**: Processes multiple plants with **incremental save strategy** - creates Google Sheet first, then saves each plant immediately after processing. This preserves partial progress if processing fails, critical for expensive API operations. Skips invalid botanical names.
