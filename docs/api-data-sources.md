@@ -318,6 +318,101 @@ The module searches 8 botanical reference websites:
 
 ---
 
+## 5. Michigan Flora Online (Local CSV)
+
+### Purpose
+- **Ecological Data**: Provides coefficient of conservatism, wetness indicators, and native status for Michigan plants
+- **Species Lookup**: Fast O(1) lookups by scientific name
+- **Cross-Validation**: Independent source for native status verification
+
+### Authentication
+**Method**: None required (local CSV file)
+
+**Data Location**: `cache/MichiganFlora/MichiganFloraSpeciesDatabase_Michigan_2024.csv`
+
+### Data Source
+**Origin**: Michigan Flora Online (michiganflora.net)  
+**Year**: 2024  
+**Records**: ~2,873 species  
+**Provider**: Merjent
+
+### Column Definitions
+
+| Column | Field Name | Type | Description |
+|--------|-----------|------|-------------|
+| Scientific Name | `scientificName` | string | Full botanical binomial (e.g., "Acer saccharum") |
+| Family | `family` | string | Taxonomic family (e.g., "Sapindaceae") |
+| Acronym | `acronym` | string | Michigan Flora short code (e.g., "ACESAU") |
+| Native? | `isNative` | boolean | true = native to Michigan, false = non-native |
+| C | `coefficientC` | number | Coefficient of Conservatism (0-10 scale) |
+| W | `wetnessW` | number | Wetland Indicator Status (-5 to +5 scale) |
+| Physiognomy | `physiognomy` | string | Plant growth form (forb, tree, shrub, grass, etc.) |
+| Duration | `duration` | string | Life cycle (annual, perennial, biennial) |
+| Common Name | `commonName` | string | Vernacular name(s), semicolon-separated if multiple |
+
+### Ecological Indicator Scales
+
+**Coefficient of Conservatism (C)** - Ecological fidelity indicator:
+- **0**: Found in any habitat, highly tolerant of disturbance
+- **1-3**: Low fidelity, tolerant of moderate disturbance
+- **4-6**: Moderate fidelity, found in relatively stable habitats
+- **7-9**: High fidelity, found in high-quality natural areas
+- **10**: Found only in pristine, undisturbed natural communities
+
+**Wetness Indicator (W)** - Habitat moisture preference:
+- **-5**: Obligate Wetland (OBL) - Almost always in wetlands
+- **-4 to -3**: Facultative Wetland (FACW) - Usually in wetlands
+- **-2 to -1**: Facultative (FAC) - Equally in wetland/upland
+- **0**: Facultative (FAC) - No strong preference
+- **+1 to +2**: Facultative Upland (FACU) - Usually in uplands
+- **+3 to +5**: Obligate Upland (UPL) - Almost never in wetlands
+
+### Dataset Statistics
+From the 2024 Michigan Flora dataset:
+- **Total Species**: 2,873
+- **Native Species**: 1,810 (63%)
+- **Non-native Species**: 1,063 (37%)
+- **Native Mean C**: 6.5
+- **Total Mean C**: 4.1
+
+### Usage in Codebase
+**Files**:
+- `src/utils/michigan-flora-client.js` - Data client utility
+- `test/test-michigan-flora-client.js` - Integration tests
+
+**Key Functions**:
+- `loadDataset()` - Loads and caches the full dataset (lazy, idempotent)
+- `findByScientificName(name)` - Lookup by full scientific name
+- `findByGenusSpecies(genus, species)` - Lookup by genus + species
+- `isNative(genus, species)` - Quick native/non-native check
+- `getCoefficient(genus, species)` - Get C value
+- `getWetness(genus, species)` - Get W value
+- `getCommonName(genus, species)` - Get common name(s)
+- `getDatasetStats()` - Get summary statistics
+
+### Caching Strategy
+**In-Memory Cache**: Dataset loaded once on first access, then cached for O(1) lookups
+
+**Lookup Keys**: Case-insensitive scientific names stored in Map for instant retrieval
+
+**Behavior**:
+- First call to any lookup function triggers full dataset load
+- Subsequent calls return cached data instantly
+- No external API calls - all data is local
+
+### Notes on Scientific Names
+Some entries contain taxonomic annotations:
+- `"Acer nigrum; a. saccharum"` - Indicates taxonomic notes or synonymy
+- These are parsed using the primary name (before semicolon) for lookups
+
+### Portability Considerations
+✅ **Works anywhere**: Local CSV file, no network required  
+✅ **No API key needed**: Static data file  
+✅ **Fast lookups**: O(1) after initial load  
+✅ **Portable**: Copy CSV file to any environment
+
+---
+
 ## Summary Table
 
 | API/Service | Auth Method | API Key Required | Portability | Primary Use |
@@ -326,6 +421,7 @@ The module searches 8 botanical reference websites:
 | **Anthropic Claude** | API Key | Yes (`ANTHROPIC_API_KEY`) | ✅ Universal | Botanical validation, native status |
 | **SerpApi** | API Key | Yes (`SERPAPI_API_KEY`) | ✅ Universal | External reference URLs |
 | **GBIF Species** | None | No | ✅ Universal | Botanical synonyms |
+| **Michigan Flora** | None (local CSV) | No | ✅ Universal | Ecological data, C/W values |
 
 ---
 
