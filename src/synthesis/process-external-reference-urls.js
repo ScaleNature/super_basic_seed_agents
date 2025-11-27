@@ -7,7 +7,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const CONFIG_PATH = path.join(__dirname, '../../config/external-reference-urls.json');
-const CACHE_PATH = path.join(__dirname, '../../cache/external-reference-urls.json');
+const CACHE_DIR = path.join(__dirname, '../../cache/ExternalReferences');
 
 // Module metadata for registry system
 export const metadata = {
@@ -39,7 +39,6 @@ export async function run(genus, species, priorResults) {
 }
 
 let config = null;
-let cache = null;
 
 function loadConfig() {
   if (!config) {
@@ -49,55 +48,127 @@ function loadConfig() {
   return config;
 }
 
-function loadCache() {
-  try {
-    if (!cache) {
-      const cacheData = fs.readFileSync(CACHE_PATH, 'utf-8');
-      cache = JSON.parse(cacheData);
-    }
-    return cache;
-  } catch (error) {
-    console.warn('Cache file not found or invalid, starting with empty cache');
-    cache = {};
-    return cache;
+/**
+ * Ensure cache directory exists
+ */
+function ensureCacheDir() {
+  if (!fs.existsSync(CACHE_DIR)) {
+    fs.mkdirSync(CACHE_DIR, { recursive: true });
   }
 }
 
-function saveCache() {
-  try {
-    // Sort species keys alphabetically (top level) - case-insensitive
-    const sortedCache = {};
-    const speciesKeys = Object.keys(cache).sort((a, b) => 
-      a.localeCompare(b, undefined, { sensitivity: 'base' })
-    );
-    
-    for (const speciesKey of speciesKeys) {
-      // Sort site keys alphabetically (nested level) - case-insensitive
-      const siteUrls = cache[speciesKey];
-      const sortedSites = {};
-      const siteKeys = Object.keys(siteUrls).sort((a, b) =>
-        a.localeCompare(b, undefined, { sensitivity: 'base' })
-      );
+/**
+ * Slugify a botanical name component for use in filenames
+ * Preserves hybrid markers (×) and handles special characters safely
+ * @param {string} name - The name component to slugify
+ * @returns {string} Filesystem-safe slug
+ */
+function slugify(name) {
+  return name
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, '-')           // spaces to hyphens
+    .replace(/[^a-z0-9×-]/g, '_');  // other special chars to underscores, keep × and -
+}
+
+/**
+ * Normalize genus name: capitalize first alphabetic character, lowercase rest
+ * Handles hybrid markers (×) at the start of genus names
+ * @param {string} genus - The genus name
+ * @returns {string} Normalized genus
+ */
+function normalizeGenus(genus) {
+  const trimmed = genus.trim();
+  let normalized = trimmed.toLowerCase();
+  
+  // Find first alphabetic character and uppercase it
+  for (let i = 0; i < normalized.length; i++) {
+    if (/[a-z]/i.test(normalized[i])) {
+      normalized = normalized.substring(0, i) + 
+                   normalized[i].toUpperCase() + 
+                   normalized.substring(i + 1);
+      break;
+    }
+  }
+  
+  return normalized;
+}
+
+/**
+ * Generate cache file path for a species
+ * @param {string} genus - Genus name
+ * @param {string} species - Species epithet
+ * @returns {string} Full path to cache file
+ */
+function getCachePath(genus, species) {
+  const slugGenus = slugify(normalizeGenus(genus));
+  const slugSpecies = slugify(species.trim().toLowerCase());
+  return path.join(CACHE_DIR, `${slugGenus}_${slugSpecies}_refURLs.json`);
+}
+
+/**
+ * Read cached data for a species if available
+ * Handles both old format (flat URLs object) and new format (with _meta)
+ * @param {string} genus - Genus name
+ * @param {string} species - Species epithet
+ * @returns {Object|null} Cached URLs or null if not found
+ */
+function readSpeciesCache(genus, species) {
+  const cachePath = getCachePath(genus, species);
+  if (fs.existsSync(cachePath)) {
+    try {
+      const content = fs.readFileSync(cachePath, 'utf-8');
+      const data = JSON.parse(content);
       
-      for (const siteKey of siteKeys) {
-        sortedSites[siteKey] = siteUrls[siteKey];
+      // Handle new format with _meta
+      if (data._meta && data.urls) {
+        return data.urls;
       }
       
-      sortedCache[speciesKey] = sortedSites;
+      // Handle old format (flat URLs object)
+      return data;
+    } catch (error) {
+      console.error(`[external-reference-urls] Error reading cache: ${error.message}`);
+      return null;
     }
-    
-    // Update in-memory cache to match persisted order
-    cache = sortedCache;
-    
-    fs.writeFileSync(CACHE_PATH, JSON.stringify(sortedCache, null, 2), 'utf-8');
-    console.log('Cache saved successfully');
-  } catch (error) {
-    console.error('Failed to save cache:', error.message);
   }
+  return null;
 }
 
-function sleep(ms) {
-  return new Promise(resolve => setTimeout(resolve, ms));
+/**
+ * Write cached data for a species
+ * @param {string} genus - Genus name
+ * @param {string} species - Species epithet
+ * @param {Object} urls - URLs data to cache
+ */
+function writeSpeciesCache(genus, species, urls) {
+  ensureCacheDir();
+  const cachePath = getCachePath(genus, species);
+  try {
+    // Sort site keys alphabetically for consistent output
+    const sortedUrls = {};
+    const siteKeys = Object.keys(urls).sort((a, b) =>
+      a.localeCompare(b, undefined, { sensitivity: 'base' })
+    );
+    for (const key of siteKeys) {
+      sortedUrls[key] = urls[key];
+    }
+    
+    // Store with metadata for reliable parsing
+    const cacheData = {
+      _meta: {
+        genus: normalizeGenus(genus),
+        species: species.trim().toLowerCase(),
+        cachedAt: new Date().toISOString()
+      },
+      urls: sortedUrls
+    };
+    
+    fs.writeFileSync(cachePath, JSON.stringify(cacheData, null, 2), 'utf-8');
+    console.log(`[external-reference-urls] Cached URLs for ${genus} ${species}`);
+  } catch (error) {
+    console.error(`[external-reference-urls] Error writing cache: ${error.message}`);
+  }
 }
 
 /**
@@ -142,6 +213,10 @@ function normalizeSpeciesKey(genus, species) {
   const normalizedSpecies = trimmedSpecies.toLowerCase();
   
   return `${normalizedGenus} ${normalizedSpecies}`;
+}
+
+function sleep(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
 }
 
 async function searchWithRetry(searchQuery, site) {
@@ -203,25 +278,21 @@ async function searchWithRetry(searchQuery, site) {
 
 export async function discoverAllUrls(genus, species) {
   const cfg = loadConfig();
-  const currentCache = loadCache();
-  
-  // Normalize species key to ensure consistent capitalization (Genus species format)
-  const speciesKey = normalizeSpeciesKey(genus, species);
   
   // Load existing cached URLs for this species (if any)
-  const cachedUrls = currentCache[speciesKey] || {};
+  const cachedUrls = readSpeciesCache(genus, species) || {};
   const urls = { ...cachedUrls }; // Start with existing cache
   
   // Check which sites are missing from cache
   const sitesToDiscover = cfg.sites.filter(site => !cachedUrls[site.name]);
   
   if (sitesToDiscover.length === 0) {
-    console.log(`\nCache hit for ${speciesKey} (all ${cfg.sites.length} sites cached)`);
+    console.log(`\nCache hit for ${genus} ${species} (all ${cfg.sites.length} sites cached)`);
     return urls;
   }
   
   const cachedCount = Object.keys(cachedUrls).length;
-  console.log(`\nPartial cache for ${speciesKey}: ${cachedCount}/${cfg.sites.length} sites cached`);
+  console.log(`\nPartial cache for ${genus} ${species}: ${cachedCount}/${cfg.sites.length} sites cached`);
   console.log(`Discovering ${sitesToDiscover.length} missing URLs...`);
   
   let newDiscoveries = 0;
@@ -262,13 +333,11 @@ export async function discoverAllUrls(genus, species) {
   
   // Save updated cache if we discovered any new URLs
   if (newDiscoveries > 0) {
-    currentCache[speciesKey] = urls;
-    cache = currentCache;
-    saveCache();
-    console.log(`\nDiscovered ${newDiscoveries} new URLs for ${speciesKey}`);
+    writeSpeciesCache(genus, species, urls);
+    console.log(`\nDiscovered ${newDiscoveries} new URLs for ${genus} ${species}`);
     console.log(`Total: ${Object.keys(urls).length}/${cfg.sites.length} URLs cached`);
   } else if (Object.keys(urls).length === 0) {
-    console.log(`\n⚠️  No URLs discovered for ${speciesKey} - not caching empty result`);
+    console.log(`\n⚠️  No URLs discovered for ${genus} ${species} - not caching empty result`);
     console.log('   This allows retry on next run if issues are resolved');
   } else {
     console.log(`\nNo new URLs discovered (still have ${Object.keys(urls).length}/${cfg.sites.length} from cache)`);
@@ -278,105 +347,135 @@ export async function discoverAllUrls(genus, species) {
 }
 
 export function getCachedUrls(genus, species) {
-  const currentCache = loadCache();
-  // Normalize species key to ensure consistent capitalization (Genus species format)
-  const speciesKey = normalizeSpeciesKey(genus, species);
-  return currentCache[speciesKey] || null;
-}
-
-export function clearCache() {
-  cache = {};
-  saveCache();
-  console.log('Cache cleared');
+  return readSpeciesCache(genus, species);
 }
 
 /**
- * Migrate cache to consolidate duplicate entries with different capitalizations
- * Merges all variants (e.g., "carex grayi", "Carex grayi", "CAREX GRAYI") into
- * the normalized form ("Carex grayi")
- * @returns {Object} Migration summary with before/after counts
- * @throws {Error} If migration fails (original cache is preserved)
+ * Clear cached URLs for a specific species
+ * @param {string} genus - Genus name
+ * @param {string} species - Species epithet
  */
-export function migrateCacheKeys() {
-  // Work on a deep clone to avoid mutating the original until save succeeds
-  const currentCache = loadCache();
-  const originalCache = JSON.parse(JSON.stringify(currentCache));
-  const migratedCache = {};
-  const mergeLog = [];
+export function clearSpeciesCache(genus, species) {
+  const cachePath = getCachePath(genus, species);
+  if (fs.existsSync(cachePath)) {
+    fs.unlinkSync(cachePath);
+    console.log(`[external-reference-urls] Removed cache for ${genus} ${species}`);
+  }
+}
+
+/**
+ * List all cached species
+ * Reads metadata from JSON files for accurate genus/species extraction
+ * @returns {Array<Object>} Array of {genus, species, urlCount} objects
+ */
+export function listCachedSpecies() {
+  ensureCacheDir();
+  
+  const files = fs.readdirSync(CACHE_DIR);
+  const species = [];
+  
+  for (const file of files) {
+    if (!file.endsWith('_refURLs.json')) continue;
+    
+    try {
+      const filePath = path.join(CACHE_DIR, file);
+      const content = fs.readFileSync(filePath, 'utf-8');
+      const data = JSON.parse(content);
+      
+      // New format with _meta
+      if (data._meta) {
+        species.push({
+          genus: data._meta.genus,
+          species: data._meta.species,
+          urlCount: Object.keys(data.urls || {}).length,
+          cachedAt: data._meta.cachedAt
+        });
+      } else {
+        // Old format - try to extract from filename
+        const match = file.match(/^([^_]+)_(.+)_refURLs\.json$/);
+        if (match) {
+          species.push({
+            genus: match[1],
+            species: match[2].replace(/-/g, ' '),
+            urlCount: Object.keys(data).length
+          });
+        }
+      }
+    } catch (error) {
+      console.warn(`[external-reference-urls] Could not parse ${file}: ${error.message}`);
+    }
+  }
+  
+  return species;
+}
+
+/**
+ * Clear all cached URL data
+ */
+export function clearAllCache() {
+  ensureCacheDir();
+  const files = fs.readdirSync(CACHE_DIR);
+  let count = 0;
+  
+  for (const file of files) {
+    if (file.endsWith('_refURLs.json')) {
+      fs.unlinkSync(path.join(CACHE_DIR, file));
+      count++;
+    }
+  }
+  
+  console.log(`[external-reference-urls] Cleared ${count} cached species`);
+}
+
+/**
+ * Migrate from old single-file cache format to per-species files
+ * @param {string} oldCachePath - Path to old cache/external-reference-urls.json file
+ * @param {boolean} overwrite - Whether to overwrite existing files (default: false)
+ * @returns {Object} Migration summary
+ */
+export function migrateFromSingleFile(oldCachePath, overwrite = false) {
+  if (!fs.existsSync(oldCachePath)) {
+    console.log('[external-reference-urls] No old cache file found to migrate');
+    return { migrated: 0, skipped: 0 };
+  }
+  
+  ensureCacheDir();
   
   try {
-    // Group entries by normalized key
-    const groups = {};
-    const unparsableEntries = {}; // Preserve entries that can't be normalized
+    const oldCache = JSON.parse(fs.readFileSync(oldCachePath, 'utf-8'));
+    let migrated = 0;
+    let skipped = 0;
     
-    for (const [originalKey, urls] of Object.entries(currentCache)) {
-      // Extract genus and species from key
-      const parts = originalKey.split(' ');
+    for (const [speciesKey, urls] of Object.entries(oldCache)) {
+      // Parse "Genus species" format (handles multi-word species like "var. dissectum")
+      const parts = speciesKey.split(' ');
       if (parts.length < 2) {
-        console.warn(`Preserving unparsable cache key: "${originalKey}" (cannot split into genus + species)`);
-        unparsableEntries[originalKey] = urls;
+        console.warn(`[external-reference-urls] Skipping unparsable key: "${speciesKey}"`);
+        skipped++;
         continue;
       }
       
       const genus = parts[0];
-      const species = parts.slice(1).join(' '); // Handle multi-word species
+      const species = parts.slice(1).join(' ');
       
-      try {
-        const normalizedKey = normalizeSpeciesKey(genus, species);
-        
-        if (!groups[normalizedKey]) {
-          groups[normalizedKey] = [];
-        }
-        
-        groups[normalizedKey].push({ originalKey, urls });
-      } catch (error) {
-        console.warn(`Preserving unparsable key "${originalKey}": ${error.message}`);
-        unparsableEntries[originalKey] = urls;
+      // Check if already migrated
+      const newPath = getCachePath(genus, species);
+      if (fs.existsSync(newPath) && !overwrite) {
+        console.log(`[external-reference-urls] Already exists: ${genus} ${species}`);
+        skipped++;
+        continue;
       }
+      
+      // Write to new per-species file
+      writeSpeciesCache(genus, species, urls);
+      migrated++;
     }
     
-    // Merge duplicate entries
-    for (const [normalizedKey, entries] of Object.entries(groups)) {
-      if (entries.length > 1) {
-        // Multiple entries found - merge them
-        const mergedUrls = {};
-        const originalKeys = entries.map(e => e.originalKey);
-        
-        // Merge all URLs, prioritizing entries with more sites
-        for (const { urls } of entries) {
-          Object.assign(mergedUrls, urls);
-        }
-        
-        migratedCache[normalizedKey] = mergedUrls;
-        mergeLog.push({
-          normalizedKey,
-          originalKeys,
-          urlCount: Object.keys(mergedUrls).length
-        });
-      } else {
-        // Single entry - just use it
-        migratedCache[normalizedKey] = entries[0].urls;
-      }
-    }
-    
-    // Add back unparsable entries (preserve for manual cleanup)
-    Object.assign(migratedCache, unparsableEntries);
-    
-    // Only commit to cache after successful processing
-    cache = migratedCache;
-    saveCache();
-    
-    return {
-      before: Object.keys(currentCache).length,
-      after: Object.keys(migratedCache).length,
-      merged: mergeLog,
-      unparsable: Object.keys(unparsableEntries).length
-    };
+    console.log(`[external-reference-urls] Migration complete: ${migrated} migrated, ${skipped} skipped`);
+    return { migrated, skipped };
     
   } catch (error) {
-    // Rollback on any error - restore original cache
-    cache = originalCache;
-    console.error('Migration failed, cache restored to original state');
-    throw new Error(`Cache migration failed: ${error.message}`);
+    console.error(`[external-reference-urls] Migration failed: ${error.message}`);
+    throw error;
   }
 }
