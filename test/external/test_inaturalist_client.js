@@ -16,25 +16,25 @@ import {
   getPlaceIds,
   clearSpeciesCache,
   listCachedSpecies
-} from '../src/utils/inaturalist-client.js';
+} from '../../src/utils/inaturalist-client.js';
 
 async function runTests() {
-  console.log('🧪 Testing iNaturalist Client\n');
+  console.log('Testing iNaturalist Client\n');
   
   let passed = 0;
   let failed = 0;
   
   function assert(condition, testName) {
     if (condition) {
-      console.log(`   ✅ ${testName}`);
+      console.log(`   PASS: ${testName}`);
       passed++;
     } else {
-      console.log(`   ❌ ${testName}`);
+      console.log(`   FAIL: ${testName}`);
       failed++;
     }
   }
   
-  console.log('📍 Test 1: Place ID Configuration\n');
+  console.log('Test 1: Place ID Configuration\n');
   const placeIds = getPlaceIds();
   assert(placeIds.washtenaw === 2649, 'Washtenaw County ID is 2649');
   assert(placeIds.livingston === 2609, 'Livingston County ID is 2609');
@@ -46,7 +46,7 @@ async function runTests() {
   assert(Object.keys(placeIds).length === 7, 'All 7 SE Michigan counties configured');
   console.log('');
   
-  console.log('🌳 Test 2: Taxa Data - Sugar Maple (Acer saccharum)\n');
+  console.log('Test 2: Taxa Data - Sugar Maple (Acer saccharum)\n');
   clearSpeciesCache('Acer', 'saccharum');
   const sugarMaple = await getTaxaData('Acer', 'saccharum', false);
   assert(sugarMaple.found === true, 'Species found');
@@ -61,7 +61,7 @@ async function runTests() {
   assert(sugarMaple.observationsCount > 50000, `Has many observations (${sugarMaple.observationsCount})`);
   console.log('');
   
-  console.log('📊 Test 3: Histogram Data - Sugar Maple Phenology\n');
+  console.log('Test 3: Histogram Data - Sugar Maple Phenology\n');
   clearSpeciesCache('Acer', 'saccharum');
   const histogram = await getHistogramData('Acer', 'saccharum', false);
   assert(histogram.found === true, 'Histogram data found');
@@ -73,10 +73,10 @@ async function runTests() {
   
   const months = Object.keys(histogram.monthlyObservations);
   assert(months.length > 0, 'Has observation data for multiple months');
-  console.log(`   📈 Monthly distribution: ${JSON.stringify(histogram.monthlyObservations)}`);
+  console.log(`   Monthly distribution: ${JSON.stringify(histogram.monthlyObservations)}`);
   console.log('');
   
-  console.log('💾 Test 4: Caching Functionality\n');
+  console.log('Test 4: Caching Functionality\n');
   const cachedTaxa = await getTaxaData('Acer', 'saccharum', true);
   assert(cachedTaxa.found === true, 'Cached taxa data retrieved');
   assert(cachedTaxa.scientificName === 'Acer saccharum', 'Cached data matches');
@@ -91,7 +91,7 @@ async function runTests() {
   assert(acerEntry?.endpoints.includes('histogram'), 'Histogram endpoint cached');
   console.log('');
   
-  console.log('🔍 Test 5: Full Species Data (Combined)\n');
+  console.log('Test 5: Full Species Data (Combined)\n');
   const fullData = await getFullSpeciesData('Quercus', 'alba', false);
   assert(fullData.taxa.found === true, 'Full data - taxa found');
   assert(fullData.histogram.found === true, 'Full data - histogram found');
@@ -99,7 +99,7 @@ async function runTests() {
   assert(fullData.taxa.preferredCommonName.toLowerCase().includes('oak'), 'White oak common name');
   console.log('');
   
-  console.log('❓ Test 6: Unknown Species Handling\n');
+  console.log('Test 6: Unknown Species Handling\n');
   const unknown = await getTaxaData('Nonexistent', 'species123', false);
   assert(unknown.found === false, 'Unknown species marked as not found');
   assert(unknown.scientificName === 'Nonexistent species123', 'Scientific name preserved');
@@ -111,22 +111,22 @@ async function runTests() {
   assert(unknownHistogram.totalObservations === 0, 'Zero observations for unknown');
   console.log('');
   
-  console.log('🌿 Test 7: Non-native Species (Norway Maple)\n');
+  console.log('Test 7: Non-native Species (Norway Maple)\n');
   clearSpeciesCache('Acer', 'platanoides');
   const norwayMaple = await getTaxaData('Acer', 'platanoides', false);
   assert(norwayMaple.found === true, 'Norway maple found');
   assert(norwayMaple.scientificName === 'Acer platanoides', 'Correct scientific name');
-  console.log(`   📝 Wikipedia: ${norwayMaple.wikipediaSummary.substring(0, 150)}...`);
+  console.log(`   Wikipedia: ${norwayMaple.wikipediaSummary.substring(0, 150)}...`);
   console.log('');
   
-  console.log('🧹 Cleanup: Removing all test cache files\n');
+  console.log('Cleanup: Removing all test cache files\n');
   clearSpeciesCache('Acer', 'saccharum');
   clearSpeciesCache('Quercus', 'alba');
   clearSpeciesCache('Nonexistent', 'species123');
   clearSpeciesCache('Acer', 'platanoides');
   
-  console.log('═'.repeat(50));
-  console.log(`\n🏁 Test Results: ${passed} passed, ${failed} failed\n`);
+  console.log('='.repeat(50));
+  console.log(`\nTest Results: ${passed} passed, ${failed} failed\n`);
   
   if (failed > 0) {
     process.exit(1);
@@ -134,6 +134,6 @@ async function runTests() {
 }
 
 runTests().catch(error => {
-  console.error('❌ Test failed with error:', error);
+  console.error('Test failed with error:', error);
   process.exit(1);
 });

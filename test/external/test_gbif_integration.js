@@ -4,10 +4,10 @@
  * Tests the GBIF API client to verify connectivity and correct parsing
  * of species matching and synonym retrieval.
  * 
- * Run with: node test/gbif-integration.test.js
+ * Run with: node test/external/test_gbif_integration.js
  */
 
-import { matchSpecies, getSynonyms } from '../src/utils/gbif-client.js';
+import { matchSpecies, getSynonyms } from '../../src/utils/gbif-client.js';
 
 // ANSI color codes for test output
 const GREEN = '\x1b[32m';
@@ -20,10 +20,10 @@ let failed = 0;
 
 function assert(condition, message) {
   if (condition) {
-    console.log(`${GREEN}✓${RESET} ${message}`);
+    console.log(`${GREEN}PASS${RESET} ${message}`);
     passed++;
   } else {
-    console.log(`${RED}✗${RESET} ${message}`);
+    console.log(`${RED}FAIL${RESET} ${message}`);
     failed++;
     throw new Error(`Assertion failed: ${message}`);
   }
@@ -145,7 +145,7 @@ async function runAllTests() {
     console.log(`${RED}Failed: ${failed}${RESET}`);
     
     if (failed === 0) {
-      console.log(`\n${GREEN}All tests passed! ✓${RESET}`);
+      console.log(`\n${GREEN}All tests passed!${RESET}`);
       process.exit(0);
     } else {
       console.log(`\n${RED}Some tests failed.${RESET}`);
