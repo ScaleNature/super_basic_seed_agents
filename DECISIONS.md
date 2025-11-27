@@ -1,5 +1,9 @@
 # Design Decisions
 
+## 2025-11-27
+- Cache GBIF data locally in cache/GBIF json files.
+- Download Michigan Flora Online dataset of species for Michigan 2024 and cache that CSV file in cache/MichiganFlora. It will be read by a data source module.
+
 ## 2025-11-23
 - Get Michigan Flora Online data. It does NOT have a public API. There is a REST API for programmatic access.
     Contact the U-M Herbarium Directly
