@@ -1,0 +1,28 @@
+{
+  "genus": "Eutrochium",
+  "species": "fistulosum",
+  "matched": true,
+  "usageKey": 3138201,
+  "acceptedName": "Eutrochium fistulosum (Barratt) E.E.Lamont",
+  "synonyms": [
+    {
+      "scientificName": "Eupatoriadelphus fistulosus (Barratt) R.M.King & H.Rob.",
+      "canonicalName": "Eupatoriadelphus fistulosus",
+      "genus": "Eupatoriadelphus",
+      "species": "fistulosus",
+      "binomial": "Eupatoriadelphus fistulosus",
+      "status": "SYNONYM",
+      "publishedIn": "R. M. King, H. Rob. (1970). In: Phytologia 19: 432."
+    },
+    {
+      "scientificName": "Eupatorium fistulosum Barratt",
+      "canonicalName": "Eupatorium fistulosum",
+      "genus": "Eupatorium",
+      "species": "fistulosum",
+      "binomial": "Eupatorium fistulosum",
+      "status": "HETEROTYPIC_SYNONYM",
+      "publishedIn": "Barratt. (1841). In: Eupatoria Verticillata: No. 1."
+    }
+  ],
+  "cachedAt": "2025-11-27T18:24:17.691Z"
+}

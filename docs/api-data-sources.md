@@ -243,6 +243,50 @@ The module searches 8 botanical reference websites:
 **Output Format**: Comma-separated binomial names  
 **Example**: `"Eupatorium fistulosum, Eupatoriadelphus fistulosus"`
 
+### Caching Strategy
+**Cache Location**: `cache/GBIF/` (folder with individual files per species)
+
+**File Naming**: `Genus_species_gbif.json`  
+**Examples**:
+- `Acer_saccharum_gbif.json`
+- `Quercus_alba_gbif.json`
+- `Eutrochium_fistulosum_gbif.json`
+
+**Cache Structure** (pretty-printed JSON for human readability):
+```json
+{
+  "genus": "Acer",
+  "species": "saccharum",
+  "matched": true,
+  "usageKey": 3189859,
+  "acceptedName": "Acer saccharum Marshall",
+  "synonyms": [
+    {
+      "scientificName": "Acer saccharophorum K.Koch & Fintelm.",
+      "canonicalName": "Acer saccharophorum",
+      "genus": "Acer",
+      "species": "saccharophorum",
+      "binomial": "Acer saccharophorum",
+      "status": "PROPARTE_SYNONYM",
+      "publishedIn": "K. Koch & Fintelm. (1859). In: Wochenschr. 349."
+    }
+  ],
+  "cachedAt": "2025-11-27T18:24:17.105Z"
+}
+```
+
+**Behavior**:
+- Cache hit: Returns all synonyms immediately (no API calls)
+- Cache miss: Fetches from GBIF API and saves to cache file
+- Failed matches: Cached as empty results to avoid repeated failed lookups
+- JSON is pretty-printed with 2-space indentation for human browsing
+
+**Benefits**:
+- ✅ Human-readable cache files (easy to inspect per-species data)
+- ✅ Git-friendly (individual file changes show up cleanly)
+- ✅ Memory efficient (only load species data when needed)
+- ✅ Scales to hundreds of species without performance degradation
+
 ### Usage in Codebase
 **Files**:
 - `src/utils/gbif-client.js` - API client utility
@@ -322,6 +366,7 @@ All environment variables can be viewed in:
 ### GBIF
 - **Rate Limits**: None specified (public API)
 - **Best Practice**: Be respectful, don't hammer endpoints
+- **Caching**: All species data cached in `cache/GBIF/` to minimize API usage
 - **Availability**: High uptime (production-grade infrastructure)
 
 ### Google Drive/Sheets

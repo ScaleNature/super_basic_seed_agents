@@ -1,0 +1,55 @@
+{
+  "genus": "Quercus",
+  "species": "alba",
+  "matched": true,
+  "usageKey": 2879737,
+  "acceptedName": "Quercus alba L.",
+  "synonyms": [
+    {
+      "scientificName": "Quercus candida Steud.",
+      "canonicalName": "Quercus candida",
+      "genus": "Quercus",
+      "species": "candida",
+      "binomial": "Quercus candida",
+      "status": "SYNONYM",
+      "publishedIn": "Nomencl. Bot., ed. 2, 2: 426 (1841)"
+    },
+    {
+      "scientificName": "Quercus nigrescens Raf.",
+      "canonicalName": "Quercus nigrescens",
+      "genus": "Quercus",
+      "species": "nigrescens",
+      "binomial": "Quercus nigrescens",
+      "status": "SYNONYM",
+      "publishedIn": "Alsogr. Amer.: 19 (1838)"
+    },
+    {
+      "scientificName": "Quercus ramosa Dippel",
+      "canonicalName": "Quercus ramosa",
+      "genus": "Quercus",
+      "species": "ramosa",
+      "binomial": "Quercus ramosa",
+      "status": "SYNONYM",
+      "publishedIn": "Handb. Laubholzk. 2: 75, 585 (1891)"
+    },
+    {
+      "scientificName": "Quercus repanda (Michx.) Raf.",
+      "canonicalName": "Quercus repanda",
+      "genus": "Quercus",
+      "species": "repanda",
+      "binomial": "Quercus repanda",
+      "status": "SYNONYM",
+      "publishedIn": "Alsogr. Amer.: 19 (1838)"
+    },
+    {
+      "scientificName": "Quercus repanda Michx.",
+      "canonicalName": "Quercus repanda",
+      "genus": "Quercus",
+      "species": "repanda",
+      "binomial": "Quercus repanda",
+      "status": "HETEROTYPIC_SYNONYM",
+      "publishedIn": "Hist. Chênes Amér.: 5 (1801)"
+    }
+  ],
+  "cachedAt": "2025-11-27T18:24:17.401Z"
+}

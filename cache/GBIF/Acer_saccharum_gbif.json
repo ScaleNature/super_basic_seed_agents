@@ -1,0 +1,46 @@
+{
+  "genus": "Acer",
+  "species": "saccharum",
+  "matched": true,
+  "usageKey": 3189859,
+  "acceptedName": "Acer saccharum Marshall",
+  "synonyms": [
+    {
+      "scientificName": "Acer hispidum Schwer.",
+      "canonicalName": "Acer hispidum",
+      "genus": "Acer",
+      "species": "hispidum",
+      "binomial": "Acer hispidum",
+      "status": "SYNONYM",
+      "publishedIn": "Schwer. (1894). In: Mitt. Deutsch. Dendrol. Ges. 1894: 51."
+    },
+    {
+      "scientificName": "Acer palmifolium Borkh.",
+      "canonicalName": "Acer palmifolium",
+      "genus": "Acer",
+      "species": "palmifolium",
+      "binomial": "Acer palmifolium",
+      "status": "SYNONYM",
+      "publishedIn": "Borkh. (1800). In: Theor. Prakt. Handb. Forstbot. 1: 107."
+    },
+    {
+      "scientificName": "Acer saccharinum Wangenh.",
+      "canonicalName": "Acer saccharinum",
+      "genus": "Acer",
+      "species": "saccharinum",
+      "binomial": "Acer saccharinum",
+      "status": "SYNONYM",
+      "publishedIn": "Beytr. teut. Forstwiss. 26, t. 11, fig. 26.  1787 (non L. 1753)"
+    },
+    {
+      "scientificName": "Acer saccharophorum K.Koch & Fintelm.",
+      "canonicalName": "Acer saccharophorum",
+      "genus": "Acer",
+      "species": "saccharophorum",
+      "binomial": "Acer saccharophorum",
+      "status": "PROPARTE_SYNONYM",
+      "publishedIn": "K. Koch & Fintelm. (1859). In: Wochenschr. 349."
+    }
+  ],
+  "cachedAt": "2025-11-27T18:24:17.105Z"
+}
